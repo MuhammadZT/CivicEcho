@@ -1,0 +1,240 @@
+MYSQL Queries used
+
+CREATE TABLE role (
+    role_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for role ID
+    role_name VARCHAR(255) UNIQUE  -- Name of the role (e.g., Citizen, Government Official)
+);
+
+CREATE TABLE location (
+    location_id INT PRIMARY KEY,  
+    division VARCHAR(255),
+    district VARCHAR(255),
+    upazila VARCHAR(255)
+);
+
+CREATE TABLE users (
+    nid BIGINT(13) PRIMARY KEY,  -- NID as primary key (13 digits)
+    name VARCHAR(255),
+    email VARCHAR(255),
+    password VARCHAR(255),
+    role_id INT,  -- Foreign key to Role
+    location_id INT,  -- Foreign key to Location (for Citizens and Government Officials)
+    created_at DATETIME,
+    FOREIGN KEY (role_id) REFERENCES Role(role_id),
+    FOREIGN KEY (location_id) REFERENCES Location(location_id)
+);
+
+CREATE TABLE priority_Level (
+    priority_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for priority levels
+    priority_name VARCHAR(255)  -- Priority level name (e.g., High, Medium, Low)
+);
+
+CREATE TABLE Complaint (
+    complaint_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for complaints
+    nid BIGINT(13),  -- Citizen's NID who submitted the complaint
+    priority_id INT,  -- Priority level of the complaint
+    status_id INT,  -- Foreign key to the Status table
+    title VARCHAR(255),
+    description TEXT,
+    location_id INT,  -- Location of the complaint
+    created_at DATETIME,
+    assigned_to BIGINT(13),  -- NID of Government Official handling the complaint
+    FOREIGN KEY (nid) REFERENCES users(nid),
+    FOREIGN KEY (priority_id) REFERENCES priority_Level(priority_id),
+    FOREIGN KEY (status_id) REFERENCES Status(status_id),  -- Foreign key to the Status table
+    FOREIGN KEY (location_id) REFERENCES location(location_id),
+    FOREIGN KEY (assigned_to) REFERENCES users(nid)  -- Foreign key to Government Official
+);
+
+
+CREATE TABLE Complaint_Category (
+    category_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for categories
+    category_name VARCHAR(255)  -- Name of the category (e.g., Traffic, Environment)
+);
+
+
+CREATE TABLE Complaint_Category_Mapping (
+    complaint_id INT,
+    category_id INT,
+    PRIMARY KEY (complaint_id, category_id),
+    FOREIGN KEY (complaint_id) REFERENCES complaint(complaint_id),
+    FOREIGN KEY (category_id) REFERENCES complaint_category(category_id)
+);
+
+
+CREATE TABLE Complaint_Log (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for logs
+    complaint_id INT,
+    status_before VARCHAR(255),  -- Status before the change
+    status_after VARCHAR(255),  -- Status after the change
+    changed_by BIGINT(13),  -- NID of the Government Official who made the change
+    changed_on DATETIME,  -- Time of the change
+    FOREIGN KEY (complaint_id) REFERENCES complaint(complaint_id),
+    FOREIGN KEY (changed_by) REFERENCES users(nid)
+);
+
+
+
+CREATE TABLE Attachment (
+    attachment_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for attachments
+    complaint_id INT,
+    file_path VARCHAR(255),  -- Path to the file
+    uploaded_at DATETIME,  -- Date and time of file upload
+    FOREIGN KEY (complaint_id) REFERENCES complaint(complaint_id)
+);
+
+CREATE TABLE Notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for notifications
+    user_id BIGINT(13),  -- NID of the Citizen to notify
+    message TEXT,  -- Notification message (e.g., "Your complaint has been resolved")
+    notification_date DATETIME,  -- Date and time of notification
+    FOREIGN KEY (user_id) REFERENCES USER(nid)
+);
+
+CREATE TABLE Feedback (
+    feedback_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for feedback
+    complaint_id INT,
+    citizen_nid BIGINT(13),  -- NID of the Citizen giving feedback
+    rating INT,  -- Rating (e.g., 1 to 5 stars)
+    comments TEXT,  -- Citizen's comments on how the complaint was handled
+    feedback_date DATETIME,  -- Date and time of the feedback submission
+    FOREIGN KEY (complaint_id) REFERENCES complaint(complaint_id),
+    FOREIGN KEY (citizen_nid) REFERENCES users(nid)
+);
+
+CREATE TABLE OTP_Verification (
+    otp_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-increment for OTP records
+    nid BIGINT(13),  -- NID of the Citizen or Government Official
+    otp_code INT,  -- OTP code sent to the user
+    is_used BOOLEAN,  -- Flag to mark if the OTP has been used
+    generated_on DATETIME,  -- Time when the OTP was generated
+    expiry_time DATETIME,  -- Expiry time of the OTP
+    FOREIGN KEY (nid) REFERENCES users(nid)
+);
+
+CREATE TABLE Status (
+    status_id INT AUTO_INCREMENT PRIMARY KEY,  -- Auto-incremented unique ID for each status
+    status_name VARCHAR(255) UNIQUE,  -- Name of the status (e.g., 'Pending', 'In Progress', 'Resolved')
+    description TEXT  -- Description of the status (optional)
+);
+
+
+CREATE TABLE Zones(zoneID INT(3) NOT NULL AUTO_INCREMENT PRIMARY KEY, zoneName VARCHAR(30));
+
+CREATE TABLE government_officials (
+    official_nid BIGINT(13) NOT NULL,  
+    zoneID INT(11) NOT NULL,          
+    PRIMARY KEY (official_nid),
+    FOREIGN KEY (official_nid) REFERENCES users(nid),
+    FOREIGN KEY (zoneID) REFERENCES zones(zoneID)
+);
+
+ALTER TABLE location
+ADD COLUMN zoneID INT(11),
+ADD CONSTRAINT fk_zone FOREIGN KEY (zoneID) REFERENCES zones(zoneID);
+
+ALTER TABLE complaint_category_mapping
+ADD COLUMN status_id INT(11),
+ADD COLUMN remarks TEXT,
+ADD COLUMN assigned_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+ADD CONSTRAINT fk_status FOREIGN KEY (status_id) REFERENCES status(status_id);
+
+INSERT INTO Role (role_name) VALUES ('Citizen'); 
+INSERT INTO Role (role_name) VALUES ('Government Official');
+
+INSERT INTO Priority_Level (priority_name) VALUES ('High');
+INSERT INTO Priority_Level (priority_name) VALUES ('Medium');
+INSERT INTO Priority_Level (priority_name) VALUES ('Low');
+
+INSERT INTO Status (status_name, description) 
+VALUES 
+    ('Pending', 'Complaint has been received but not yet assigned to a department.'),
+    ('In Progress', 'Complaint is being actively handled by the relevant department.'),
+    ('Resolved', 'Complaint has been resolved and the citizen has been notified.'),
+    ('Closed', 'Complaint has been closed without resolution.'),
+    ('On Hold', 'Complaint is temporarily put on hold due to lack of information.');
+
+
+-- Dhaka North
+INSERT INTO location (location_id, division, district, upazila) VALUES
+(1, 'Dhaka', 'Gazipur', 'Tongi'),
+(2, 'Dhaka', 'Gazipur', 'Kaliakair'),
+(3, 'Dhaka', 'Gazipur', 'Sreepur'),
+(4, 'Dhaka', 'Gazipur', 'Kapasia'),
+(5, 'Dhaka', 'Narayanganj', 'Narayanganj Sadar'),
+(6, 'Dhaka', 'Narayanganj', 'Rupganj'),
+(7, 'Dhaka', 'Narayanganj', 'Sonargaon'),
+(8, 'Dhaka', 'Mymensingh', 'Mymensingh Sadar'),
+(9, 'Dhaka', 'Mymensingh', 'Trishal'),
+(10, 'Dhaka', 'Mymensingh', 'Ishwarganj'),
+(11, 'Dhaka', 'Mymensingh', 'Haluaghat'),
+(12, 'Dhaka', 'Mymensingh', 'Gouripur'),
+(13, 'Dhaka', 'Tangail', 'Tangail Sadar'),
+(14, 'Dhaka', 'Tangail', 'Gopalpur'),
+(15, 'Dhaka', 'Tangail', 'Kalihati'),
+(16, 'Dhaka', 'Tangail', 'Nagarpur'),
+(17, 'Dhaka', 'Kishoreganj', 'Kishoreganj Sadar'),
+(18, 'Dhaka', 'Kishoreganj', 'Mithamain'),
+(19, 'Dhaka', 'Kishoreganj', 'Bajitpur'),
+(20, 'Dhaka', 'Kishoreganj', 'Karimganj'),
+(21, 'Dhaka', 'Moulvibazar', 'Moulvibazar Sadar'),
+(22, 'Dhaka', 'Moulvibazar', 'Kulaura'),
+(23, 'Dhaka', 'Moulvibazar', 'Barlekha'),
+(24, 'Dhaka', 'Moulvibazar', 'Juri');
+
+-- Dhaka South
+INSERT INTO location (location_id, division, district, upazila) VALUES
+(25, 'Dhaka', 'Dhaka', 'Dhanmondi'),
+(26, 'Dhaka', 'Dhaka', 'Mirpur'),
+(27, 'Dhaka', 'Dhaka', 'Gulshan'),
+(28, 'Dhaka', 'Dhaka', 'Khilgaon'),
+(29, 'Dhaka', 'Dhaka', 'Badda'),
+(30, 'Dhaka', 'Dhaka', 'Mohakhali'),
+(31, 'Dhaka', 'Dhaka', 'Tejgaon'),
+(32, 'Dhaka', 'Dhaka', 'Puranapara'),
+(33, 'Dhaka', 'Faridpur', 'Faridpur Sadar'),
+(34, 'Dhaka', 'Faridpur', 'Nagarkanda'),
+(35, 'Dhaka', 'Faridpur', 'Boalmari'),
+(36, 'Dhaka', 'Faridpur', 'Madhukhali'),
+(37, 'Dhaka', 'Munshiganj', 'Munshiganj Sadar'),
+(38, 'Dhaka', 'Munshiganj', 'Sreenagar'),
+(39, 'Dhaka', 'Madaripur', 'Madaripur Sadar'),
+(40, 'Dhaka', 'Madaripur', 'Shibchar'),
+(41, 'Dhaka', 'Madaripur', 'Rupsha'),
+(42, 'Dhaka', 'Shariatpur', 'Shariatpur Sadar'),
+(43, 'Dhaka', 'Shariatpur', 'Bhedarganj'),
+(44, 'Dhaka', 'Rajbari', 'Rajbari Sadar'),
+(45, 'Dhaka', 'Rajbari', 'Pangsha'),
+(46, 'Dhaka', 'Rajbari', 'Goalanda'),
+(47, 'Dhaka', 'Manikganj', 'Manikganj Sadar'),
+(48, 'Dhaka', 'Manikganj', 'Shibalaya'),
+(49, 'Dhaka', 'Manikganj', 'Daulatpur'),
+(50, 'Dhaka', 'Narsingdi', 'Narsingdi Sadar'),
+(51, 'Dhaka', 'Narsingdi', 'Raipura'),
+(52, 'Dhaka', 'Narsingdi', 'Belabo'),
+(53, 'Dhaka', 'Narsingdi', 'Monohardi');
+
+
+INSERT INTO complaint_category (category_name) VALUES
+('Public Infrastructure'),
+('Waste Management'),
+('Traffic and Transport'),
+('Health and Safety'),
+('Environment and Pollution'),
+('Education'),
+('Law and Order'),
+('Utilities'),
+('Corruption and Governance'),
+('Housing and Urban Development');
+
+
+ALTER TABLE complaint_category_mapping
+ADD COLUMN status_id INT(11),
+ADD COLUMN remarks TEXT,
+ADD COLUMN assigned_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+ADD CONSTRAINT fk_status FOREIGN KEY (status_id) REFERENCES status(status_id);
+
+
+INSERT INTO zones (zoneName) VALUES
+('Dhaka North'),
+('Dhaka South');
